@@ -1,13 +1,14 @@
 import type { SeasonPerformance } from "../../domain/career/season-performance";
 
 export function registerRoleAppearance(
-  performance: SeasonPerformance,
+  season: SeasonPerformance,
   role: string,
 ): SeasonPerformance {
   return {
+    ...season,
     appearancesByRole: {
-      ...performance.appearancesByRole,
-      [role]: (performance.appearancesByRole[role] ?? 0) + 1,
+      ...season.appearancesByRole,
+      [role]: (season.appearancesByRole[role] ?? 0) + 1,
     },
   };
 }
