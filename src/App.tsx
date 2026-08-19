@@ -14,6 +14,8 @@ import { calculateSubstitutionMinuteModifier } from "./engine/selection/calculat
 import type { Player } from "./domain/player/player";
 import type { SeasonPerformance } from "./domain/career/season-performance";
 
+import { resetPlayerStateForNewSeason } from "./engine/career/reset-player-state-for-new-season";
+
 function App() {
   const [player, setPlayer] = useState<Player>(() => createPlayer());
 
@@ -78,16 +80,21 @@ function App() {
   }
 
   function advanceSeason() {
-    const developedPlayer = developPlayerAttributes(player, season);
+    const developedPlayer = developPlayerAttributes(
+      player,
+      season
+    );
 
-    setPlayer({
+    const playerWithNewState = {
       ...developedPlayer,
+      state: resetPlayerStateForNewSeason(developedPlayer.state),
       identity: {
         ...developedPlayer.identity,
         age: developedPlayer.identity.age + 1,
       },
-    });
+    };
 
+    setPlayer(playerWithNewState);
     setSeason(createSeasonPerformance());
   }
 
