@@ -6,6 +6,11 @@ import { createSeasonPerformance } from "./engine/career/create-season-performan
 import { registerMatchPerformance } from "./engine/career/register-match-performance";
 import { developPlayerAttributes } from "./engine/career/develop-player-attributes";
 
+import { calculateStartingChance } from "./engine/selection/calculate-starting-chance";
+import { calculateSubstituteChance } from "./engine/selection/calculate-substitute-chance";
+import { calculateInGameSubstitutionChance } from "./engine/selection/calculate-in-game-substitution-chance";
+import { calculateSubstitutionMinuteModifier } from "./engine/selection/calculate-substitution-minute-modifier";
+
 import type { Player } from "./domain/player/player";
 import type { SeasonPerformance } from "./domain/career/season-performance";
 
@@ -15,6 +20,10 @@ function App() {
   const [season, setSeason] = useState<SeasonPerformance>(() =>
     createSeasonPerformance()
   );
+
+  const [clubStrength, setClubStrength] = useState(70);
+  const [coachRelationship, setCoachRelationship] = useState(60);
+  const [matchMinute, setMatchMinute] = useState(45);
 
   const overall = useMemo(() => {
     const values = Object.values(player.attributes);
@@ -27,6 +36,33 @@ function App() {
       values.reduce((total, value) => total + value, 0) / values.length
     );
   }, [player.attributes]);
+
+  const startingChance = calculateStartingChance(
+    overall,
+    clubStrength,
+    "first_division",
+    player.state.fatigue,
+    coachRelationship
+  );
+
+  const substituteChance = calculateSubstituteChance(
+    overall,
+    clubStrength,
+    "first_division",
+    player.state.fatigue,
+    coachRelationship
+  );
+
+  const inGameChance = calculateInGameSubstitutionChance(
+    overall,
+    clubStrength,
+    "first_division",
+    player.state.fatigue,
+    coachRelationship,
+    matchMinute
+  );
+
+  const minuteModifier = calculateSubstitutionMinuteModifier(matchMinute);
 
   function playMatch() {
     const goals = Math.floor(Math.random() * 3);
@@ -42,10 +78,7 @@ function App() {
   }
 
   function advanceSeason() {
-    const developedPlayer = developPlayerAttributes(
-      player,
-      season
-    );
+    const developedPlayer = developPlayerAttributes(player, season);
 
     setPlayer({
       ...developedPlayer,
@@ -174,6 +207,89 @@ function App() {
         </div>
       </section>
 
+      <section className="panel selection-panel">
+        <div className="panel-header">
+          <div>
+            <h3>Seleção para a partida</h3>
+            <p className="panel-description">
+              O treinador avalia o jogador com base em nível, competição,
+              relacionamento e fadiga.
+            </p>
+          </div>
+
+          <span className="system-tag">SISTEMA ATIVO</span>
+        </div>
+
+        <div className="selection-controls">
+          <Control
+            label="Força do clube"
+            value={clubStrength}
+            min={0}
+            max={100}
+            onChange={setClubStrength}
+          />
+
+          <Control
+            label="Relacionamento com treinador"
+            value={coachRelationship}
+            min={0}
+            max={100}
+            onChange={setCoachRelationship}
+          />
+
+          <Control
+            label="Minuto da partida"
+            value={matchMinute}
+            min={0}
+            max={90}
+            onChange={setMatchMinute}
+          />
+        </div>
+
+        <div className="selection-results">
+          <ChanceCard
+            label="Titular"
+            value={startingChance}
+            description="Chance de começar a partida"
+          />
+
+          <ChanceCard
+            label="Reserva"
+            value={substituteChance}
+            description="Chance de ficar disponível no banco"
+          />
+
+          <ChanceCard
+            label="Entrar"
+            value={inGameChance}
+            description={`Chance aos ${matchMinute}'`}
+          />
+        </div>
+
+        <div className="match-info">
+          <div>
+            <span>Fadiga atual</span>
+            <strong>{Math.floor(player.state.fatigue)}%</strong>
+          </div>
+
+          <div>
+            <span>Modificador do minuto</span>
+            <strong>
+              {minuteModifier > 0 ? `+${minuteModifier}` : minuteModifier}
+            </strong>
+          </div>
+
+          <div>
+            <span>Regra especial</span>
+            <strong>
+              {player.state.fatigue >= 95
+                ? "Impedido por fadiga"
+                : "Elegível"}
+            </strong>
+          </div>
+        </div>
+      </section>
+
       <section className="actions">
         <button
           type="button"
@@ -192,6 +308,67 @@ function App() {
         </button>
       </section>
     </main>
+  );
+}
+
+function ChanceCard({
+  label,
+  value,
+  description,
+}: {
+  label: string;
+  value: number;
+  description: string;
+}) {
+  return (
+    <div className="chance-card">
+      <div className="chance-card-top">
+        <span>{label}</span>
+        <strong>{Math.floor(value)}%</strong>
+      </div>
+
+      <div className="bar">
+        <div
+          className="bar-fill"
+          style={{
+            width: `${Math.min(Math.max(value, 0), 100)}%`,
+          }}
+        />
+      </div>
+
+      <small>{description}</small>
+    </div>
+  );
+}
+
+function Control({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="control">
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
   );
 }
 
